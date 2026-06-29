@@ -5,21 +5,21 @@ from datetime import datetime
 from functools import wraps
 
 from flask import Flask, request, jsonify, session
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "change-this-in-production")
 
 # ---------- DB connection ----------
 def get_db():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=os.environ.get("DB_HOST", "localhost"),
         port=os.environ.get("DB_PORT", "5432"),
         dbname=os.environ.get("DB_NAME", "minigpay"),
         user=os.environ.get("DB_USER", "gpayuser"),
         password=os.environ.get("DB_PASS", "gpaypass"),
-        cursor_factory=RealDictCursor,
+        row_factory=dict_row,
     )
 
 # ---------- Auth helper ----------
@@ -66,7 +66,7 @@ def register():
         )
         conn.commit()
         return jsonify({"message": "Registered successfully", "user_id": user_id}), 201
-    except psycopg2.errors.UniqueViolation:
+    except psycopg.errors.UniqueViolation:
         conn.rollback()
         return jsonify({"error": "Phone number already registered"}), 409
     finally:
