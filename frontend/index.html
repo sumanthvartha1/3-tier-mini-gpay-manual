@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini GPay</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+        .container { max-width: 420px; margin: 0 auto; padding: 20px; }
+
+        .header { background: #1a73e8; color: white; padding: 20px; text-align: center; border-radius: 12px 12px 0 0; }
+        .header h1 { font-size: 24px; font-weight: 600; }
+        .header .balance { font-size: 36px; margin-top: 8px; }
+        .header .balance-label { font-size: 13px; opacity: 0.8; }
+
+        .card { background: white; border-radius: 12px; padding: 20px; margin-top: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card h2 { font-size: 16px; color: #333; margin-bottom: 12px; }
+
+        input, button { width: 100%; padding: 12px; border-radius: 8px; font-size: 15px; border: 1px solid #ddd; margin-top: 8px; }
+        input:focus { outline: none; border-color: #1a73e8; }
+        button { background: #1a73e8; color: white; border: none; cursor: pointer; font-weight: 600; margin-top: 12px; }
+        button:hover { background: #1557b0; }
+        button.secondary { background: #f0f2f5; color: #333; }
+        button.secondary:hover { background: #e0e2e5; }
+        button.danger { background: #d93025; }
+
+        .txn-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f2f5; }
+        .txn-item:last-child { border: none; }
+        .txn-name { font-weight: 500; font-size: 14px; }
+        .txn-note { font-size: 12px; color: #888; }
+        .txn-amount { font-weight: 600; font-size: 15px; }
+        .txn-amount.credit { color: #0d904f; }
+        .txn-amount.debit { color: #d93025; }
+        .txn-date { font-size: 11px; color: #aaa; }
+
+        .auth-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+        .auth-page .card { width: 100%; max-width: 380px; }
+        .auth-page h1 { text-align: center; color: #1a73e8; font-size: 28px; margin-bottom: 4px; }
+        .auth-page p { text-align: center; color: #666; font-size: 14px; margin-bottom: 16px; }
+        .toggle-link { text-align: center; margin-top: 12px; font-size: 14px; color: #1a73e8; cursor: pointer; }
+
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+        .action-btn { background: #e8f0fe; color: #1a73e8; border: none; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; text-align: center; }
+        .action-btn:hover { background: #d2e3fc; }
+
+        .msg { padding: 10px; border-radius: 8px; margin-top: 8px; font-size: 14px; }
+        .msg.ok { background: #e6f4ea; color: #137333; }
+        .msg.err { background: #fce8e6; color: #c5221f; }
+
+        .hidden { display: none !important; }
+
+        .user-info { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
+        .user-info span { font-size: 13px; opacity: 0.85; }
+        #logout-btn { width: auto; padding: 6px 14px; font-size: 12px; margin: 0; background: rgba(255,255,255,0.2); }
+        #logout-btn:hover { background: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="auth-page">
+    <div class="container">
+        <h1>Mini GPay</h1>
+        <p>A simple wallet app</p>
+        <div class="card">
+            <div id="login-form">
+                <h2>Login</h2>
+                <input type="tel" id="login-phone" placeholder="Phone number">
+                <input type="password" id="login-pass" placeholder="Password">
+                <button onclick="doLogin()">Login</button>
+                <div class="toggle-link" onclick="showRegister()">New user? Register here</div>
+            </div>
+            <div id="register-form" class="hidden">
+                <h2>Register</h2>
+                <input type="text" id="reg-name" placeholder="Full name">
+                <input type="tel" id="reg-phone" placeholder="Phone number">
+                <input type="password" id="reg-pass" placeholder="Password">
+                <button onclick="doRegister()">Register</button>
+                <div class="toggle-link" onclick="showLogin()">Already have an account? Login</div>
+            </div>
+            <div id="auth-msg"></div>
+        </div>
+    </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="hidden">
+    <div class="container">
+        <div class="header">
+            <div class="user-info">
+                <span id="user-name"></span>
+                <button id="logout-btn" onclick="doLogout()">Logout</button>
+            </div>
+            <div class="balance-label">Wallet Balance</div>
+            <div class="balance">₹<span id="balance-amount">0.00</span></div>
+        </div>
+
+        <div class="actions">
+            <div class="action-btn" onclick="showSection('add-section')">+ Add Money</div>
+            <div class="action-btn" onclick="showSection('send-section')">Send Money</div>
+        </div>
+
+        <div id="add-section" class="card hidden">
+            <h2>Add Money to Wallet</h2>
+            <input type="number" id="add-amount" placeholder="Enter amount" min="1">
+            <button onclick="doAddMoney()">Add Money</button>
+            <div id="add-msg"></div>
+        </div>
+
+        <div id="send-section" class="card hidden">
+            <h2>Send Money</h2>
+            <input type="tel" id="send-phone" placeholder="Receiver's phone number">
+            <input type="number" id="send-amount" placeholder="Amount" min="1">
+            <input type="text" id="send-note" placeholder="Note (optional)">
+            <button onclick="doSendMoney()">Send</button>
+            <div id="send-msg"></div>
+        </div>
+
+        <div class="card">
+            <h2>Recent Transactions</h2>
+            <div id="txn-list"><p style="color:#888; font-size:14px;">No transactions yet</p></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = '/api';
+
+    function showMsg(el, msg, ok) {
+        el.innerHTML = `<div class="msg ${ok ? 'ok' : 'err'}">${msg}</div>`;
+        setTimeout(() => el.innerHTML = '', 4000);
+    }
+
+    function showRegister() {
+        document.getElementById('login-form').classList.add('hidden');
+        document.getElementById('register-form').classList.remove('hidden');
+    }
+    function showLogin() {
+        document.getElementById('register-form').classList.add('hidden');
+        document.getElementById('login-form').classList.remove('hidden');
+    }
+    function showSection(id) {
+        ['add-section', 'send-section'].forEach(s => {
+            document.getElementById(s).classList.toggle('hidden', s !== id || !document.getElementById(s).classList.contains('hidden'));
+        });
+    }
+
+    async function doRegister() {
+        const name = document.getElementById('reg-name').value;
+        const phone = document.getElementById('reg-phone').value;
+        const password = document.getElementById('reg-pass').value;
+        const res = await fetch(`${API}/register`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, phone, password})
+        });
+        const data = await res.json();
+        showMsg(document.getElementById('auth-msg'), data.message || data.error, res.ok);
+        if (res.ok) setTimeout(showLogin, 1500);
+    }
+
+    async function doLogin() {
+        const phone = document.getElementById('login-phone').value;
+        const password = document.getElementById('login-pass').value;
+        const res = await fetch(`${API}/login`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({phone, password})
+        });
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('user-name').textContent = data.name;
+            loadBalance();
+            loadTransactions();
+        } else {
+            showMsg(document.getElementById('auth-msg'), data.error, false);
+        }
+    }
+
+    async function doLogout() {
+        await fetch(`${API}/logout`, {method: 'POST'});
+        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('auth-screen').classList.remove('hidden');
+    }
+
+    async function loadBalance() {
+        const res = await fetch(`${API}/balance`);
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('balance-amount').textContent = data.balance.toFixed(2);
+        }
+    }
+
+    async function loadTransactions() {
+        const res = await fetch(`${API}/transactions`);
+        if (res.ok) {
+            const data = await res.json();
+            const el = document.getElementById('txn-list');
+            if (data.transactions.length === 0) {
+                el.innerHTML = '<p style="color:#888; font-size:14px;">No transactions yet</p>';
+                return;
+            }
+            el.innerHTML = data.transactions.map(t => `
+                <div class="txn-item">
+                    <div>
+                        <div class="txn-name">${t.direction === 'debit' ? 'To ' + t.receiver : (t.sender === t.receiver ? 'Wallet top-up' : 'From ' + t.sender)}</div>
+                        <div class="txn-note">${t.note}</div>
+                        <div class="txn-date">${new Date(t.date).toLocaleString()}</div>
+                    </div>
+                    <div class="txn-amount ${t.direction}">${t.direction === 'debit' ? '-' : '+'}₹${t.amount.toFixed(2)}</div>
+                </div>
+            `).join('');
+        }
+    }
+
+    async function doAddMoney() {
+        const amount = parseFloat(document.getElementById('add-amount').value);
+        const res = await fetch(`${API}/add-money`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({amount})
+        });
+        const data = await res.json();
+        showMsg(document.getElementById('add-msg'), data.message || data.error, res.ok);
+        if (res.ok) { loadBalance(); loadTransactions(); document.getElementById('add-amount').value = ''; }
+    }
+
+    async function doSendMoney() {
+        const phone = document.getElementById('send-phone').value;
+        const amount = parseFloat(document.getElementById('send-amount').value);
+        const note = document.getElementById('send-note').value;
+        const res = await fetch(`${API}/send-money`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({phone, amount, note})
+        });
+        const data = await res.json();
+        showMsg(document.getElementById('send-msg'), data.message || data.error, res.ok);
+        if (res.ok) {
+            loadBalance(); loadTransactions();
+            document.getElementById('send-phone').value = '';
+            document.getElementById('send-amount').value = '';
+            document.getElementById('send-note').value = '';
+        }
+    }
+
+    fetch(`${API}/balance`).then(r => { if (r.ok) return r.json(); throw ''; })
+        .then(d => {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('balance-amount').textContent = d.balance.toFixed(2);
+            document.getElementById('user-name').textContent = d.name;
+            loadTransactions();
+        }).catch(() => {});
+</script>
+</body>
+</html>
